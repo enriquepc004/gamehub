@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from flask import request
@@ -164,3 +164,34 @@ class DOIMapping(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     dataset_doi_old = db.Column(db.String(120))
     dataset_doi_new = db.Column(db.String(120))
+
+
+class BaseDataset(db.Model):
+    __abstract__ = True
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    ds_meta_data_id = db.Column(db.Integer, db.ForeignKey("ds_meta_data.id"), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    @db.declared_attr
+    def ds_meta_data(cls):
+        return db.relationship("DSMetaData")
+
+
+class GameDataset(BaseDataset):
+    __tablename__ = "game_dataset"
+
+    files = db.relationship("GameDatasetFile", back_populates="game_dataset", cascade="all, delete-orphan")
+
+
+class GameDatasetFile(db.Model):
+    __tablename__ = "game_dataset_file"
+
+    id = db.Column(db.Integer, primary_key=True)
+    game_dataset_id = db.Column(db.Integer, db.ForeignKey("game_dataset.id"), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    checksum = db.Column(db.String(120), nullable=False)
+    size = db.Column(db.Integer, nullable=False)
+
+    game_dataset = db.relationship("GameDataset", back_populates="files")
